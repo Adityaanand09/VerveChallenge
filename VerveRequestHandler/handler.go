@@ -2,6 +2,8 @@ package VerveRequestHandler
 
 import (
 	"VerveChallenge/internal"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log/slog"
@@ -17,11 +19,10 @@ type RequestHandler struct {
 	//requestCounter *requestCounter
 }
 
-//type requestCounter struct {
-//	Mutex     *sync.RWMutex
-//	uniqueIDs map[int]struct{}
-//}
-
+type RequestData struct {
+	Count int    `json:"count"`
+	ID    string `json:"id"`
+}
 type FileWriter interface {
 	GetValue() int
 	Write()
@@ -53,13 +54,19 @@ func (r RequestHandler) HandleJson(ctx *gin.Context) {
 }
 
 func (r RequestHandler) helper(id string, endpoint string) error {
-	//idValue, err := strconv.Atoi(id)
-	//if err != nil {
-	//	return err
-	//}
 	val := r.fileWriter.GetValue()
+	requestData := RequestData{
+		Count: val,
+		ID:    id,
+	}
+
+	// Convert the data structure to JSON
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		return err
+	}
 	if endpoint != "" {
-		resp, err := http.Get("http://localhost:8080/api/verve/" + endpoint + "?count=" + strconv.Itoa(val))
+		resp, err := http.Post("http://localhost:8080/api/verve/"+endpoint, "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			return fmt.Errorf("error sending GET request: %v", err)
 		}
@@ -70,8 +77,7 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 	if err != nil {
 		return err
 	}
-	r.dispatcher.Dispatch(internal.Message{newID})
-	slog.Info("count", "size", val)
+	r.dispatcher.Dispatch(internal.Message{Id: newID})
 
 	return nil
 }

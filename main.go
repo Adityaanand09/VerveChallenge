@@ -27,7 +27,7 @@ func main() {
 
 	//FileWriter.New(FileWriter.Configs{WriteInterval: 1})
 	app.GET("/api/verve/accept", verveHandler.HandleJson)
-	app.GET("/api/verve/track", trackHandler.HandleJson)
+	app.POST("/api/verve/track", trackHandler.HandleJson)
 
 	server := &http.Server{
 		Addr:    ":8080",
