@@ -2,26 +2,28 @@ package VerveRequestHandler
 
 import (
 	"VerveChallenge/internal"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"log/slog"
 	"net/http"
 	"strconv"
 )
 
 type RequestHandler struct {
-	id         string `json:"id"`
-	endpoint   string `json:"endpoint"`
-	dispatcher dispatcher
-	fileWriter FileWriter
-	//requestCounter *requestCounter
+	id          string `json:"id"`
+	endpoint    string `json:"endpoint"`
+	dispatcher  dispatcher
+	fileWriter  FileWriter
+	redisClient *redis.Client
 }
 
-//type requestCounter struct {
-//	Mutex     *sync.RWMutex
-//	uniqueIDs map[int]struct{}
-//}
-
+type RequestData struct {
+	Count int    `json:"count"`
+	ID    string `json:"id"`
+}
 type FileWriter interface {
 	GetValue() int
 	Write()
@@ -32,6 +34,7 @@ type dispatcher interface {
 }
 
 func New(fw FileWriter, d dispatcher) RequestHandler {
+
 	r1 := RequestHandler{dispatcher: d, fileWriter: fw}
 	return r1
 }
@@ -53,13 +56,19 @@ func (r RequestHandler) HandleJson(ctx *gin.Context) {
 }
 
 func (r RequestHandler) helper(id string, endpoint string) error {
-	//idValue, err := strconv.Atoi(id)
-	//if err != nil {
-	//	return err
-	//}
 	val := r.fileWriter.GetValue()
+	requestData := RequestData{
+		Count: val,
+		ID:    id,
+	}
+
+	// Convert the data structure to JSON
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		return err
+	}
 	if endpoint != "" {
-		resp, err := http.Get("http://localhost:8080/api/verve/" + endpoint + "?count=" + strconv.Itoa(val))
+		resp, err := http.Post("http://localhost:8080/api/verve/"+endpoint, "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			return fmt.Errorf("error sending GET request: %v", err)
 		}
@@ -70,8 +79,7 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 	if err != nil {
 		return err
 	}
-	r.dispatcher.Dispatch(internal.Message{newID})
-	slog.Info("count", "size", val)
+	r.dispatcher.Dispatch(internal.Message{Id: newID})
 
 	return nil
 }
