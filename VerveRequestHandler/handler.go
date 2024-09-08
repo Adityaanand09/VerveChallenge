@@ -1,7 +1,7 @@
 package VerveRequestHandler
 
 import (
-	"VerveChallenge/internal"
+	dispatcher2 "VerveChallenge/internal/dispatcher"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -25,7 +25,7 @@ type RequestData struct {
 }
 
 type dispatcher interface {
-	Dispatch(m internal.Message)
+	Dispatch(m dispatcher2.Message)
 }
 
 type Producer interface {
@@ -72,13 +72,13 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 			return fmt.Errorf("error sending POST request: %v", err)
 		}
 		defer resp.Body.Close()
-		slog.Info("Response code = ", "response code", resp.StatusCode)
+		slog.Info("Response code", "code=", resp.StatusCode)
 	}
 	newID, err := strconv.Atoi(id)
 	if err != nil {
 		return err
 	}
-	r.dispatcher.Dispatch(internal.Message{Id: newID})
+	r.dispatcher.Dispatch(dispatcher2.Message{Id: newID})
 
 	return nil
 }

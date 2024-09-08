@@ -2,9 +2,7 @@ package Kafka
 
 import (
 	"context"
-	"crypto/tls"
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl/plain"
 	"log"
 	"log/slog"
 	"strconv"
@@ -53,22 +51,14 @@ func New(c Configs) Producer {
 		return Producer{}
 	}
 	fw := Producer{WriteInterval: c.WriteInterval, Counter: counter, writer: producer}
-	go fw.logUniqueRequests(c.WriteInterval)
+	go fw.updateUniqueIds(c.WriteInterval)
 	return fw
 }
 
 func InitializeProducerFromConfigs(config ProducerConfig) (Producer, error) {
-	tr := &kafka.Transport{
-		SASL: plain.Mechanism{
-			Username: config.SASLUsername,
-			Password: config.SASLPassword,
-		},
-		TLS: &tls.Config{},
-	}
 	w := &kafka.Writer{
 		Addr:         kafka.TCP(config.BrokerAddresses...),
 		Topic:        config.Topic,
-		Transport:    tr,
 		BatchTimeout: time.Duration(config.WriteInterval) * time.Minute,
 	}
 
@@ -82,7 +72,7 @@ func (fw Producer) IncrementCounter(idValue int) {
 
 }
 
-func (fw Producer) logUniqueRequests(writeInterval int) {
+func (fw Producer) updateUniqueIds(writeInterval int) {
 	for {
 		time.Sleep(time.Duration(writeInterval) * time.Minute)
 		fw.ProduceHelper()
