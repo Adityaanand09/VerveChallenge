@@ -4,9 +4,11 @@ import (
 	"VerveChallenge/FileWriter"
 	"VerveChallenge/VerveRequestHandler"
 	"VerveChallenge/VerveTrackHandler"
-	"VerveChallenge/internal"
+	"VerveChallenge/internal/configs"
+	"VerveChallenge/internal/dispatcher"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,12 +19,22 @@ import (
 func main() {
 	app := gin.New()
 
-	fw := FileWriter.New(FileWriter.Configs{FileName: "uniqueCount.log", WriteInterval: 1})
-	d := internal.NewAsyncDispatcher(100, 120, fw)
+	err := configs.Initialize()
+	if err != nil {
+		slog.Error("Terminating Server, error in initializing configs", "error", err)
+		return
+	}
+
+	var (
+		numWorkers      = viper.GetInt("NUMBER_OF_WORKERS")
+		buffChannelSize = viper.GetInt("BUFFERED_CHANNEL_SIZE")
+	)
+
+	fw := FileWriter.New(FileWriter.Configs{FileName: viper.GetString("FILENAME"), WriteIntervalMin: viper.GetInt("WRITE_INTERVAL_MIN"), RedisServer: viper.GetString("REDIS_SERVER_ADDRESS"), RedisPassword: viper.GetString("REDIS_PASSWORD"), RedisKey: viper.GetString("REDIS_KEY")})
+	d := dispatcher.NewAsyncDispatcher(numWorkers, buffChannelSize, fw)
 	verveHandler := VerveRequestHandler.New(fw, d)
 	trackHandler := VerveTrackHandler.New()
 
-	//FileWriter.New(FileWriter.Configs{WriteInterval: 1})
 	app.GET("/api/verve/accept", verveHandler.HandleJson)
 	app.POST("/api/verve/track", trackHandler.HandleJson)
 

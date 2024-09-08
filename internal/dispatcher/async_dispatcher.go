@@ -1,4 +1,4 @@
-package internal
+package dispatcher
 
 type AsyncDispatcher struct {
 	messages   chan Message

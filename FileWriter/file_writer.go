@@ -3,23 +3,32 @@ package FileWriter
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"log"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 )
 
+type RedisConfig struct {
+	redisConn *redis.Client
+	RedisKey  string
+}
+
 type Configs struct {
-	FileName      string
-	WriteInterval int
+	FileName         string
+	WriteIntervalMin int
+	RedisServer      string
+	RedisPassword    string
+	RedisKey         string
 }
 
 type Counter struct {
-	Mutex     *sync.RWMutex
-	uniqueIDs map[int]struct{}
-	redisConn *redis.Client
+	Mutex        *sync.RWMutex
+	uniqueIDs    map[int]struct{}
+	redisConfigs RedisConfig
 }
 
 type FileWriter struct {
@@ -28,47 +37,36 @@ type FileWriter struct {
 	*Counter
 }
 
-func initRedisClient() *redis.Client {
+func initRedisClient(server, password, key string) RedisConfig {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379", // Redis server address
-		Password: "",               // No password
-		DB:       0,                // Default DB
+		Addr:     server,   // Redis server address
+		Password: password, // No password
+		DB:       0,        // Default DB
 	})
-	return rdb
+	return RedisConfig{
+		redisConn: rdb,
+		RedisKey:  key,
+	}
 }
 
 func New(c Configs) FileWriter {
-	rdb := initRedisClient()
-	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{}), redisConn: rdb}
-	go counter.logUniqueRequests()
-	return FileWriter{fileName: c.FileName, WriteInterval: c.WriteInterval, Counter: counter}
+	rdb := initRedisClient(c.RedisServer, c.RedisPassword, c.RedisKey)
+	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{}), redisConfigs: rdb}
+	go counter.logUniqueRequests(c.WriteIntervalMin, c.FileName, c.RedisKey)
+	return FileWriter{fileName: c.FileName, WriteInterval: c.WriteIntervalMin, Counter: counter}
 }
 
 func (r *Counter) IncrementCounter(idValue int) {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
 	r.addIfUnique(strconv.Itoa(idValue))
-	//r.uniqueIDs[idValue] = struct{}{}
-
 }
 
-//func (r *Counter) incrementUniqueIDCount() error {
-//	// Increment the counter for unique IDs
-//	_, err := r.redisConn.Incr(context.Background(), "unique_id_count").Result()
-//	//_, err :=r.redisConn.SCard(context.Background(),"unique_ids").Result()
-//	return err
-//}
-
 func (r *Counter) getUniqueIDCount() (int, error) {
-	// Retrieve the unique ID count
-	//val, err := r.redisConn.SCard(context.Background(), "unique_ids").Result()
-	//if err != nil {
-	//	return 0, err
-	//}
 	currentTimestamp := float64(time.Now().Unix())
 
 	// Count the number of IDs within the last 60 seconds
-	val, _ := r.redisConn.ZCount(context.Background(), "unique_ids", fmt.Sprintf("%f", currentTimestamp-60), fmt.Sprintf("%f", currentTimestamp)).Result()
+	val, _ := r.redisConfigs.redisConn.ZCount(context.Background(), r.redisConfigs.RedisKey, fmt.Sprintf("%f", currentTimestamp-60), fmt.Sprintf("%f", currentTimestamp)).Result()
 	return strconv.Atoi(strconv.FormatInt(val, 10))
 }
 
@@ -77,12 +75,12 @@ func (r *Counter) removeOldIDs(ctx context.Context, setKey string) error {
 	oneMinuteAgo := float64(time.Now().Add(-60 * time.Second).Unix())
 
 	// Remove all IDs older than one minute
-	return r.redisConn.ZRemRangeByScore(ctx, setKey, "-inf", fmt.Sprintf("%f", oneMinuteAgo)).Err()
+	return r.redisConfigs.redisConn.ZRemRangeByScore(ctx, setKey, "-inf", fmt.Sprintf("%f", oneMinuteAgo)).Err()
 }
 
 func (r *Counter) addIfUnique(id string) {
 	timestamp := float64(time.Now().Unix())
-	err := r.redisConn.ZAdd(context.Background(), "unique_ids", &redis.Z{
+	err := r.redisConfigs.redisConn.ZAdd(context.Background(), "unique_ids", &redis.Z{
 		Score:  timestamp,
 		Member: id,
 	}).Err()
@@ -92,16 +90,16 @@ func (r *Counter) addIfUnique(id string) {
 	return // Returns true if it's a new ID, false otherwise
 }
 
-func (r *Counter) logUniqueRequests() {
+func (r *Counter) logUniqueRequests(writeInterval int, fileName, redisKey string) {
 	for {
-		time.Sleep(30 * time.Second)
-		r.Write()
-		r.removeOldIDs(context.Background(), "unique_ids")
+		time.Sleep(time.Duration(writeInterval) * time.Minute)
+		r.Write(fileName)
+		r.removeOldIDs(context.Background(), redisKey)
 		r.uniqueIDs = make(map[int]struct{}) // Reset the store every minute
 	}
 }
 
-func (r *Counter) Write() {
+func (r *Counter) Write(fileName string) {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
 	uniqueRequests, err := r.getUniqueIDCount()
@@ -110,7 +108,7 @@ func (r *Counter) Write() {
 	}
 
 	// Log the unique request count
-	file, err := os.OpenFile("uniqueCount.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Println(err)
 	}

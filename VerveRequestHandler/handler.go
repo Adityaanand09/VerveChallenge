@@ -1,23 +1,22 @@
 package VerveRequestHandler
 
 import (
-	"VerveChallenge/internal"
+	dispatcher2 "VerveChallenge/internal/dispatcher"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"log/slog"
 	"net/http"
 	"strconv"
 )
 
 type RequestHandler struct {
-	id          string `json:"id"`
-	endpoint    string `json:"endpoint"`
-	dispatcher  dispatcher
-	fileWriter  FileWriter
-	redisClient *redis.Client
+	id         string `json:"id"`
+	endpoint   string `json:"endpoint"`
+	dispatcher dispatcher
+	fileWriter FileWriter
+	//redisClient *redis.Client
 }
 
 type RequestData struct {
@@ -26,11 +25,11 @@ type RequestData struct {
 }
 type FileWriter interface {
 	GetValue() int
-	Write()
+	Write(filName string)
 }
 
 type dispatcher interface {
-	Dispatch(m internal.Message)
+	Dispatch(m dispatcher2.Message)
 }
 
 func New(fw FileWriter, d dispatcher) RequestHandler {
@@ -79,7 +78,7 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 	if err != nil {
 		return err
 	}
-	r.dispatcher.Dispatch(internal.Message{Id: newID})
+	r.dispatcher.Dispatch(dispatcher2.Message{Id: newID})
 
 	return nil
 }
