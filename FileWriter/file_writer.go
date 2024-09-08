@@ -52,7 +52,7 @@ func initRedisClient(server, password, key string) RedisConfig {
 func New(c Configs) FileWriter {
 	rdb := initRedisClient(c.RedisServer, c.RedisPassword, c.RedisKey)
 	counter := &Counter{Mutex: &sync.RWMutex{}, redisConfigs: rdb}
-	go counter.logUniqueRequests(c.WriteIntervalMin, c.FileName, c.RedisKey)
+	go counter.updateUniqueIds(c.WriteIntervalMin, c.FileName, c.RedisKey)
 	return FileWriter{fileName: c.FileName, WriteInterval: c.WriteIntervalMin, Counter: counter}
 }
 
@@ -90,7 +90,7 @@ func (r *Counter) addIfUnique(id string) {
 	return
 }
 
-func (r *Counter) logUniqueRequests(writeInterval int, fileName, redisKey string) {
+func (r *Counter) updateUniqueIds(writeInterval int, fileName, redisKey string) {
 	for {
 		time.Sleep(time.Duration(writeInterval) * time.Minute)
 		r.Write(fileName)

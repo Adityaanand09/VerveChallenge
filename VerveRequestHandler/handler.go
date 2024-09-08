@@ -72,7 +72,7 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 			return fmt.Errorf("error sending GET request: %v", err)
 		}
 		defer resp.Body.Close()
-		slog.Info("Response code = ", "response code", resp.StatusCode)
+		slog.Info("Response", "code=", resp.StatusCode)
 	}
 	newID, err := strconv.Atoi(id)
 	if err != nil {
