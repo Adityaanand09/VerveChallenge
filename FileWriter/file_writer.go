@@ -27,7 +27,6 @@ type Configs struct {
 
 type Counter struct {
 	Mutex        *sync.RWMutex
-	uniqueIDs    map[int]struct{}
 	redisConfigs RedisConfig
 }
 
@@ -51,7 +50,7 @@ func initRedisClient(server, password, key string) RedisConfig {
 
 func New(c Configs) FileWriter {
 	rdb := initRedisClient(c.RedisServer, c.RedisPassword, c.RedisKey)
-	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{}), redisConfigs: rdb}
+	counter := &Counter{Mutex: &sync.RWMutex{}, redisConfigs: rdb}
 	go counter.logUniqueRequests(c.WriteIntervalMin, c.FileName, c.RedisKey)
 	return FileWriter{fileName: c.FileName, WriteInterval: c.WriteIntervalMin, Counter: counter}
 }
@@ -80,7 +79,7 @@ func (r *Counter) removeOldIDs(ctx context.Context, setKey string) error {
 
 func (r *Counter) addIfUnique(id string) {
 	timestamp := float64(time.Now().Unix())
-	err := r.redisConfigs.redisConn.ZAdd(context.Background(), "unique_ids", &redis.Z{
+	err := r.redisConfigs.redisConn.ZAdd(context.Background(), r.redisConfigs.RedisKey, &redis.Z{
 		Score:  timestamp,
 		Member: id,
 	}).Err()
@@ -95,7 +94,6 @@ func (r *Counter) logUniqueRequests(writeInterval int, fileName, redisKey string
 		time.Sleep(time.Duration(writeInterval) * time.Minute)
 		r.Write(fileName)
 		r.removeOldIDs(context.Background(), redisKey)
-		r.uniqueIDs = make(map[int]struct{}) // Reset the store every minute
 	}
 }
 

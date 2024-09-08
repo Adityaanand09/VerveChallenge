@@ -7,7 +7,6 @@ import (
 )
 
 func Initialize() error {
-	_ = os.Setenv("ENV", "env")
 	env := os.Getenv("ENV")
 	fileName := env
 
