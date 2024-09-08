@@ -32,7 +32,7 @@ type FileWriter struct {
 
 func New(c Configs) FileWriter {
 	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{})}
-	go counter.logUniqueRequests(c.FileName, c.WriteInterval)
+	go counter.updateUniqueIds(c.FileName, c.WriteInterval)
 	return FileWriter{fileName: c.FileName, WriteInterval: c.WriteInterval, Counter: counter}
 }
 
@@ -43,7 +43,7 @@ func (r *Counter) IncrementCounter(idValue int) {
 
 }
 
-func (r *Counter) logUniqueRequests(fileName string, writeInterval int) {
+func (r *Counter) updateUniqueIds(fileName string, writeInterval int) {
 	for {
 		time.Sleep(time.Duration(writeInterval) * time.Minute)
 		r.Write(fileName)
