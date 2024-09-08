@@ -1,21 +1,20 @@
 package main
 
 import (
-	"VerveChallenge/FileWriter"
-	"VerveChallenge/VerveRequestHandler"
-	"VerveChallenge/VerveTrackHandler"
-	"VerveChallenge/internal"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-)
 
-//TIP To run your code, right-click the code and select <b>Run</b>. Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.
+	"VerveChallenge/FileWriter"
+	"VerveChallenge/VerveRequestHandler"
+	"VerveChallenge/VerveTrackHandler"
+	"VerveChallenge/internal"
+
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
 	app := gin.New()
@@ -51,6 +50,3 @@ func main() {
 
 	<-quit
 }
-
-//TIP See GoLand help at <a href="https://www.jetbrains.com/help/go/">jetbrains.com/help/go/</a>.
-// Also, you can try interactive lessons for GoLand by selecting 'Help | Learn IDE Features' from the main menu.

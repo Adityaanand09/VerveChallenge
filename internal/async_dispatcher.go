@@ -19,8 +19,6 @@ func NewAsyncDispatcher(noOfWorkers int, bufSize int, dispatcher Dispatcher) Asy
 		go d.asyncProcess()
 	}
 
-	//go d.monitorChannel()
-
 	return d
 }
 

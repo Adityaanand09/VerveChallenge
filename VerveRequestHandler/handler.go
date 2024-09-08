@@ -1,14 +1,16 @@
 package VerveRequestHandler
 
 import (
-	"VerveChallenge/internal"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"VerveChallenge/internal"
+
+	"github.com/gin-gonic/gin"
 )
 
 type RequestHandler struct {
@@ -16,12 +18,10 @@ type RequestHandler struct {
 	endpoint   string `json:"endpoint"`
 	dispatcher dispatcher
 	fileWriter FileWriter
-	//requestCounter *requestCounter
 }
 
 type RequestData struct {
-	Count int    `json:"count"`
-	ID    string `json:"id"`
+	Count int `json:"count"`
 }
 type FileWriter interface {
 	GetValue() int
@@ -57,7 +57,6 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 	val := r.fileWriter.GetValue()
 	requestData := RequestData{
 		Count: val,
-		ID:    id,
 	}
 
 	// Convert the data structure to JSON
