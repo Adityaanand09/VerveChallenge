@@ -5,11 +5,20 @@ type AsyncDispatcher struct {
 	dispatcher Dispatcher
 }
 
+//func (d AsyncDispatcher) GetValue() int {
+//	//TODO implement me
+//	panic("implement me")
+//}
+//
+//func (d AsyncDispatcher) Produce(ctx context.Context, key string, payload []byte) error {
+//	//TODO implement me
+//	panic("implement me")
+//}
+
 type Message struct {
 	Id int
 }
 type Dispatcher interface {
-	GetValue() int
 	IncrementCounter(idValue int)
 }
 
@@ -18,9 +27,6 @@ func NewAsyncDispatcher(noOfWorkers int, bufSize int, dispatcher Dispatcher) Asy
 	for i := 0; i < noOfWorkers; i++ {
 		go d.asyncProcess()
 	}
-
-	//go d.monitorChannel()
-
 	return d
 }
 

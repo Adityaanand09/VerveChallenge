@@ -3,6 +3,7 @@ package VerveRequestHandler
 import (
 	"VerveChallenge/internal"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -12,39 +13,39 @@ import (
 )
 
 type RequestHandler struct {
-	id         string `json:"id"`
-	endpoint   string `json:"endpoint"`
+	Id         string `json:"id"`
+	Endpoint   string `json:"endpoint"`
 	dispatcher dispatcher
-	fileWriter FileWriter
-	//requestCounter *requestCounter
+	producer   Producer
 }
 
 type RequestData struct {
 	Count int    `json:"count"`
 	ID    string `json:"id"`
 }
-type FileWriter interface {
-	GetValue() int
-	Write()
-}
 
 type dispatcher interface {
 	Dispatch(m internal.Message)
 }
 
-func New(fw FileWriter, d dispatcher) RequestHandler {
-	r1 := RequestHandler{dispatcher: d, fileWriter: fw}
+type Producer interface {
+	GetValue() int
+	Produce(ctx context.Context, key string, payload []byte) error
+}
+
+func New(d dispatcher, p Producer) RequestHandler {
+	r1 := RequestHandler{dispatcher: d, producer: p}
 	return r1
 }
 
 func (r RequestHandler) HandleJson(ctx *gin.Context) {
 	var req = &RequestHandler{}
-	req.id = ctx.Request.URL.Query().Get("id")
-	req.endpoint = ctx.Request.URL.Query().Get("endpoint")
+	req.Id = ctx.Request.URL.Query().Get("id")
+	req.Endpoint = ctx.Request.URL.Query().Get("endpoint")
 
-	err := r.helper(req.id, req.endpoint)
+	err := r.helper(req.Id, req.Endpoint)
 	if err != nil {
-		ctx.Writer.WriteHeader(http.StatusInternalServerError)
+		ctx.Writer.WriteHeader(http.StatusBadRequest)
 		ctx.Writer.Write([]byte("failed"))
 		return
 	}
@@ -54,7 +55,7 @@ func (r RequestHandler) HandleJson(ctx *gin.Context) {
 }
 
 func (r RequestHandler) helper(id string, endpoint string) error {
-	val := r.fileWriter.GetValue()
+	val := r.producer.GetValue()
 	requestData := RequestData{
 		Count: val,
 		ID:    id,
@@ -68,7 +69,7 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 	if endpoint != "" {
 		resp, err := http.Post("http://localhost:8080/api/verve/"+endpoint, "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
-			return fmt.Errorf("error sending GET request: %v", err)
+			return fmt.Errorf("error sending POST request: %v", err)
 		}
 		defer resp.Body.Close()
 		slog.Info("Response code = ", "response code", resp.StatusCode)

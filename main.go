@@ -1,7 +1,7 @@
 package main
 
 import (
-	"VerveChallenge/FileWriter"
+	"VerveChallenge/Kafka"
 	"VerveChallenge/VerveRequestHandler"
 	"VerveChallenge/VerveTrackHandler"
 	"VerveChallenge/internal"
@@ -20,12 +20,12 @@ import (
 func main() {
 	app := gin.New()
 
-	fw := FileWriter.New(FileWriter.Configs{FileName: "uniqueCount.log", WriteInterval: 1})
+	fw := Kafka.New(Kafka.Configs{Topic: "count_events", WriteInterval: 1, Brokers: []string{"localhost:9092"}})
 	d := internal.NewAsyncDispatcher(100, 120, fw)
-	verveHandler := VerveRequestHandler.New(fw, d)
+	verveHandler := VerveRequestHandler.New(d, fw)
 	trackHandler := VerveTrackHandler.New()
 
-	//FileWriter.New(FileWriter.Configs{WriteInterval: 1})
+	//Producer.New(Producer.Configs{WriteInterval: 1})
 	app.GET("/api/verve/accept", verveHandler.HandleJson)
 	app.POST("/api/verve/track", trackHandler.HandleJson)
 
