@@ -25,7 +25,7 @@ type RequestData struct {
 }
 type FileWriter interface {
 	GetValue() int
-	Write()
+	Write(fileName string)
 }
 
 type dispatcher interface {

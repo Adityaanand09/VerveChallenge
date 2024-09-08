@@ -1,7 +1,9 @@
 package main
 
 import (
+	"VerveChallenge/internal/config"
 	"errors"
+	"github.com/spf13/viper"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,9 +20,19 @@ import (
 
 func main() {
 	app := gin.New()
+	err := config.Initialize()
+	if err != nil {
+		slog.Error("Terminating Server, error in initializing configs", "error", err)
+		return
+	}
 
-	fw := FileWriter.New(FileWriter.Configs{FileName: "uniqueCount.log", WriteInterval: 1})
-	d := internal.NewAsyncDispatcher(100, 120, fw)
+	var (
+		numWorkers      = viper.GetInt("NUMBER_OF_WORKERS")
+		buffChannelSize = viper.GetInt("BUFFERED_CHANNEL_SIZE")
+	)
+
+	fw := FileWriter.New(FileWriter.Configs{FileName: viper.GetString("FILENAME"), WriteInterval: viper.GetInt("WRITE_INTERVAL_MIN")})
+	d := internal.NewAsyncDispatcher(numWorkers, buffChannelSize, fw)
 	verveHandler := VerveRequestHandler.New(fw, d)
 	trackHandler := VerveTrackHandler.New()
 
