@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"sync"
@@ -84,9 +85,9 @@ func (r *Counter) addIfUnique(id string) {
 		Member: id,
 	}).Err()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("error while adding to redis", "error", err)
 	}
-	return // Returns true if it's a new ID, false otherwise
+	return
 }
 
 func (r *Counter) logUniqueRequests(writeInterval int, fileName, redisKey string) {

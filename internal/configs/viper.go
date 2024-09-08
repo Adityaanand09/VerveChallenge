@@ -12,7 +12,7 @@ func Initialize() error {
 
 	viper.SetConfigName(fileName)
 	viper.SetConfigType("json")
-	viper.AddConfigPath("./config/")
+	viper.AddConfigPath("./configs/")
 	viper.AutomaticEnv() // if a key is present in the json file and environment, the environment value will be used.
 
 	fileName += ".json"
