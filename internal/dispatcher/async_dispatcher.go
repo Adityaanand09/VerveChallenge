@@ -1,19 +1,9 @@
-package internal
+package dispatcher
 
 type AsyncDispatcher struct {
 	messages   chan Message
 	dispatcher Dispatcher
 }
-
-//func (d AsyncDispatcher) GetValue() int {
-//	//TODO implement me
-//	panic("implement me")
-//}
-//
-//func (d AsyncDispatcher) Produce(ctx context.Context, key string, payload []byte) error {
-//	//TODO implement me
-//	panic("implement me")
-//}
 
 type Message struct {
 	Id int

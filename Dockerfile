@@ -10,7 +10,7 @@ RUN go build -o verve main.go
 
 FROM golang:1.21.1
 COPY --from=builder /app/verve .
-RUN mkdir config
-#ENV ENV=${ENV}
-#COPY --from=builder /app/configs/* configs/
+RUN mkdir configs
+ENV ENV="env"
+COPY --from=builder /app/configs/* configs/
 ENTRYPOINT ./verve

@@ -42,17 +42,18 @@ type ProducerConfig struct {
 	BrokerAddresses []string
 	SASLUsername    string
 	SASLPassword    string
+	WriteInterval   int
 }
 
 func New(c Configs) Producer {
 	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{})}
-	p := ProducerConfig{Topic: c.Topic, BrokerAddresses: c.Brokers, SASLPassword: c.Password, SASLUsername: c.Username}
+	p := ProducerConfig{Topic: c.Topic, BrokerAddresses: c.Brokers, SASLPassword: c.Password, SASLUsername: c.Username, WriteInterval: c.WriteInterval}
 	producer, err := InitializeProducerFromConfigs(p)
 	if err != nil {
 		return Producer{}
 	}
 	fw := Producer{WriteInterval: c.WriteInterval, Counter: counter, writer: producer}
-	go fw.logUniqueRequests()
+	go fw.logUniqueRequests(c.WriteInterval)
 	return fw
 }
 
@@ -65,9 +66,10 @@ func InitializeProducerFromConfigs(config ProducerConfig) (Producer, error) {
 		TLS: &tls.Config{},
 	}
 	w := &kafka.Writer{
-		Addr:      kafka.TCP(config.BrokerAddresses...),
-		Topic:     config.Topic,
-		Transport: tr,
+		Addr:         kafka.TCP(config.BrokerAddresses...),
+		Topic:        config.Topic,
+		Transport:    tr,
+		BatchTimeout: time.Duration(config.WriteInterval) * time.Minute,
 	}
 
 	return Producer{topic: w.Topic, writer: w}, nil
@@ -80,9 +82,9 @@ func (fw Producer) IncrementCounter(idValue int) {
 
 }
 
-func (fw Producer) logUniqueRequests() {
+func (fw Producer) logUniqueRequests(writeInterval int) {
 	for {
-		time.Sleep(30 * time.Second)
+		time.Sleep(time.Duration(writeInterval) * time.Minute)
 		fw.ProduceHelper()
 		fw.uniqueIDs = make(map[int]struct{}) // Reset the store every minute
 	}
@@ -109,14 +111,6 @@ func (fw Producer) GetValue() int {
 }
 
 func (fw Producer) Produce(ctx context.Context, key string, payload []byte) error {
-
-	// In the case of invalid topics, the message will be published to the 'bad_event' topic.
-	//if len(topic) == 0 {
-	//	slog.Warn("Unable to find topic for the event", "eventName", eventName, "topic", topic, "osType", osType)
-	//	metrics.BadTopicEvents.Inc()
-	//	topic = p.badTopic
-	//}
-
 	err := fw.writer.WriteMessages(ctx, kafka.Message{
 		Key:   []byte(key),
 		Value: payload,

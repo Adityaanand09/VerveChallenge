@@ -4,9 +4,11 @@ import (
 	"VerveChallenge/Kafka"
 	"VerveChallenge/VerveRequestHandler"
 	"VerveChallenge/VerveTrackHandler"
-	"VerveChallenge/internal"
+	"VerveChallenge/internal/configs"
+	"VerveChallenge/internal/dispatcher"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,8 +22,20 @@ import (
 func main() {
 	app := gin.New()
 
-	fw := Kafka.New(Kafka.Configs{Topic: "count_events", WriteInterval: 1, Brokers: []string{"localhost:9092"}, Username: "", Password: ""})
-	d := internal.NewAsyncDispatcher(100, 120, fw)
+	err := configs.Initialize()
+	if err != nil {
+		slog.Error("Terminating Server, error in initializing configs", "error", err)
+		return
+	}
+
+	var (
+		numWorkers      = viper.GetInt("NUMBER_OF_WORKERS")
+		buffChannelSize = viper.GetInt("BUFFERED_CHANNEL_SIZE")
+	)
+
+	fw := Kafka.New(Kafka.Configs{Topic: viper.GetString("KAFKA_TOPIC"), WriteInterval: viper.GetInt("WRITE_INTERVAL_MIN"), Brokers: []string{viper.GetString("KAFKA_BROKER_ADDRESS")}, Username: "", Password: ""})
+
+	d := dispatcher.NewAsyncDispatcher(numWorkers, buffChannelSize, fw)
 	verveHandler := VerveRequestHandler.New(d, fw)
 	trackHandler := VerveTrackHandler.New()
 
