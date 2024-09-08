@@ -1,7 +1,7 @@
 package VerveRequestHandler
 
 import (
-	"VerveChallenge/internal"
+	dispatcher2 "VerveChallenge/internal/dispatcher"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log/slog"
@@ -24,11 +24,11 @@ type RequestHandler struct {
 
 type FileWriter interface {
 	GetValue() int
-	Write()
+	Write(fileName string)
 }
 
 type dispatcher interface {
-	Dispatch(m internal.Message)
+	Dispatch(m dispatcher2.Message)
 }
 
 func New(fw FileWriter, d dispatcher) RequestHandler {
@@ -53,10 +53,6 @@ func (r RequestHandler) HandleJson(ctx *gin.Context) {
 }
 
 func (r RequestHandler) helper(id string, endpoint string) error {
-	//idValue, err := strconv.Atoi(id)
-	//if err != nil {
-	//	return err
-	//}
 	val := r.fileWriter.GetValue()
 	if endpoint != "" {
 		resp, err := http.Get("http://localhost:8080/api/verve/" + endpoint + "?count=" + strconv.Itoa(val))
@@ -70,7 +66,7 @@ func (r RequestHandler) helper(id string, endpoint string) error {
 	if err != nil {
 		return err
 	}
-	r.dispatcher.Dispatch(internal.Message{newID})
+	r.dispatcher.Dispatch(dispatcher2.Message{Id: newID})
 	slog.Info("count", "size", val)
 
 	return nil

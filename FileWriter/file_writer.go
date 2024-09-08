@@ -8,23 +8,12 @@ import (
 	"time"
 )
 
-//import (
-//	"log"
-//	"log/slog"
-//	"os"
-//)
-
 type Configs struct {
 	FileName      string
 	WriteInterval int
 }
 
-//type requestHandler interface {
-//	logUniqueRequests()
-//}
-
 type Counter struct {
-	//requestHandler
 	Mutex     *sync.RWMutex
 	uniqueIDs map[int]struct{}
 }
@@ -32,37 +21,37 @@ type Counter struct {
 type FileWriter struct {
 	fileName      string
 	WriteInterval int
-	Counter
+	*Counter
 }
 
 func New(c Configs) FileWriter {
-	counter := Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{})}
-	go counter.logUniqueRequests()
+	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{})}
+	go counter.logUniqueRequests(c.WriteInterval, c.FileName)
 	return FileWriter{fileName: c.FileName, WriteInterval: c.WriteInterval, Counter: counter}
 }
 
-func (r Counter) IncrementCounter(idValue int) {
+func (r *Counter) IncrementCounter(idValue int) {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
 	r.uniqueIDs[idValue] = struct{}{}
 
 }
 
-func (r Counter) logUniqueRequests() {
+func (r *Counter) logUniqueRequests(writeInterval int, fileName string) {
 	for {
-		time.Sleep(30 * time.Second)
-		r.Write()
+		time.Sleep(time.Duration(writeInterval) * time.Minute)
+		r.Write(fileName)
 		r.uniqueIDs = make(map[int]struct{}) // Reset the store every minute
 	}
 }
 
-func (r Counter) Write() {
+func (r *Counter) Write(fileName string) {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
 	uniqueRequests := len(r.uniqueIDs)
 
 	// Log the unique request count
-	file, err := os.OpenFile("uniqueCount.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Println(err)
 	}
@@ -70,7 +59,7 @@ func (r Counter) Write() {
 	log.Printf("Unique requests in the last minute: %d\n", uniqueRequests)
 }
 
-func (r Counter) GetValue() int {
+func (r *Counter) GetValue() int {
 	r.Mutex.RLock()
 	defer r.Mutex.RUnlock()
 	return len(r.uniqueIDs)

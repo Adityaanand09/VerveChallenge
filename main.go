@@ -1,27 +1,39 @@
 package main
 
 import (
-	"VerveChallenge/FileWriter"
-	"VerveChallenge/VerveRequestHandler"
-	"VerveChallenge/VerveTrackHandler"
-	"VerveChallenge/internal"
+	"VerveChallenge/internal/config"
+	"VerveChallenge/internal/dispatcher"
 	"errors"
-	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-)
 
-//TIP To run your code, right-click the code and select <b>Run</b>. Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.
+	"VerveChallenge/FileWriter"
+	"VerveChallenge/VerveRequestHandler"
+	"VerveChallenge/VerveTrackHandler"
+
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
 	app := gin.New()
 
-	fw := FileWriter.New(FileWriter.Configs{FileName: "uniqueCount.log", WriteInterval: 1})
-	d := internal.NewAsyncDispatcher(100, 120, fw)
+	err := config.Initialize()
+	if err != nil {
+		slog.Error("Terminating Server, error in initializing configs", "error", err)
+		return
+	}
+
+	var (
+		numWorkers      = viper.GetInt("NUMBER_OF_WORKERS")
+		buffChannelSize = viper.GetInt("BUFFERED_CHANNEL_SIZE")
+	)
+
+	fw := FileWriter.New(FileWriter.Configs{FileName: viper.GetString("FILENAME"), WriteInterval: viper.GetInt("WRITE_INTERVAL_MIN")})
+	d := dispatcher.NewAsyncDispatcher(numWorkers, buffChannelSize, fw)
 	verveHandler := VerveRequestHandler.New(fw, d)
 	trackHandler := VerveTrackHandler.New()
 

@@ -1,4 +1,4 @@
-package internal
+package dispatcher
 
 type AsyncDispatcher struct {
 	messages   chan Message
@@ -18,9 +18,6 @@ func NewAsyncDispatcher(noOfWorkers int, bufSize int, dispatcher Dispatcher) Asy
 	for i := 0; i < noOfWorkers; i++ {
 		go d.asyncProcess()
 	}
-
-	//go d.monitorChannel()
-
 	return d
 }
 
