@@ -20,7 +20,7 @@ import (
 func main() {
 	app := gin.New()
 
-	fw := Kafka.New(Kafka.Configs{Topic: "count_events", WriteInterval: 1, Brokers: []string{"localhost:9092"}})
+	fw := Kafka.New(Kafka.Configs{Topic: "count_events", WriteInterval: 1, Brokers: []string{"localhost:9092"}, Username: "", Password: ""})
 	d := internal.NewAsyncDispatcher(100, 120, fw)
 	verveHandler := VerveRequestHandler.New(d, fw)
 	trackHandler := VerveTrackHandler.New()

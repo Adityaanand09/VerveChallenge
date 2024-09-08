@@ -2,7 +2,9 @@ package Kafka
 
 import (
 	"context"
+	"crypto/tls"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 	"log"
 	"log/slog"
 	"strconv"
@@ -14,6 +16,8 @@ type Configs struct {
 	Topic         string
 	WriteInterval int
 	Brokers       []string
+	Username      string
+	Password      string
 }
 
 type Counter struct {
@@ -36,11 +40,13 @@ type Producer struct {
 type ProducerConfig struct {
 	Topic           string
 	BrokerAddresses []string
+	SASLUsername    string
+	SASLPassword    string
 }
 
 func New(c Configs) Producer {
 	counter := &Counter{Mutex: &sync.RWMutex{}, uniqueIDs: make(map[int]struct{})}
-	p := ProducerConfig{Topic: c.Topic, BrokerAddresses: c.Brokers}
+	p := ProducerConfig{Topic: c.Topic, BrokerAddresses: c.Brokers, SASLPassword: c.Password, SASLUsername: c.Username}
 	producer, err := InitializeProducerFromConfigs(p)
 	if err != nil {
 		return Producer{}
@@ -51,9 +57,17 @@ func New(c Configs) Producer {
 }
 
 func InitializeProducerFromConfigs(config ProducerConfig) (Producer, error) {
+	tr := &kafka.Transport{
+		SASL: plain.Mechanism{
+			Username: config.SASLUsername,
+			Password: config.SASLPassword,
+		},
+		TLS: &tls.Config{},
+	}
 	w := &kafka.Writer{
-		Addr:  kafka.TCP(config.BrokerAddresses...),
-		Topic: config.Topic,
+		Addr:      kafka.TCP(config.BrokerAddresses...),
+		Topic:     config.Topic,
+		Transport: tr,
 	}
 
 	return Producer{topic: w.Topic, writer: w}, nil
